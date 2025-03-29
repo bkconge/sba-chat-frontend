@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // API configuration
-    const API_URL = 'https://YOUR_BACKEND_URL/api/chat';  // Update this with your actual backend URL when deployed
+    const API_URL = 'https://YOUR_AWS_LAMBDA_URL/api/chat';  // Update this with your AWS Lambda URL when deployed
     const API_KEY = '';  // Add your API key if needed
 
     // Initialize by loading chat history and resizing the input
