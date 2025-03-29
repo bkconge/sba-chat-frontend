@@ -457,8 +457,24 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Try to extract answer and sources based on common API response formats
             if (data && typeof data === 'object') {
+                // Format 0: API Gateway Lambda Proxy format with body as string
+                if (data.statusCode && data.body && typeof data.body === 'string') {
+                    try {
+                        // Parse the nested body JSON string
+                        const bodyData = JSON.parse(data.body);
+                        console.log('Parsed body data:', bodyData);
+                        
+                        if (bodyData.answer) {
+                            answer = bodyData.answer;
+                            sources = bodyData.sources || [];
+                            console.log('Found answer in parsed body');
+                        }
+                    } catch (e) {
+                        console.error('Error parsing body:', e);
+                    }
+                }
                 // Format 1: { answer: "text", sources: [] } - our expected format
-                if (data.answer) {
+                else if (data.answer) {
                     answer = data.answer;
                     sources = data.sources || [];
                 }
