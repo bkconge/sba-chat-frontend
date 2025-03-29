@@ -474,6 +474,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             answer = bodyData.answer;
                             sources = bodyData.sources || [];
                             console.log('Found answer in parsed body');
+                            
+                            // Return immediately with the parsed data to prevent fallback
+                            return {
+                                answer: answer,
+                                sources: sources
+                            };
                         }
                     } catch (e) {
                         console.error('Error parsing body:', e);
@@ -531,6 +537,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Could not extract answer from API response, using mock data instead');
                 return mockAPIResponse(message);
             }
+            
+            console.log('Successfully extracted answer:', answer.substring(0, 50) + '...');
+            console.log('Sources:', sources);
             
             // Return in our standard format
             return {
@@ -608,6 +617,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Send to API and get response
         const response = await sendMessageToAPI(message);
+        
+        // Debug the API response
+        console.log('Response from API:', JSON.stringify(response, null, 2));
+        console.log('Response type:', typeof response);
+        console.log('Has answer property:', response.hasOwnProperty('answer'));
+        console.log('Answer value:', response.answer);
         
         // Process API response
         addAssistantMessage(response.answer, response.sources);
