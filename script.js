@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // API configuration
-    const API_URL = 'https://LAMBDA_API_GATEWAY_URL';  // Replace this with your actual API Gateway URL after deployment
+    const API_URL = 'PASTE_YOUR_API_GATEWAY_URL_HERE';  // Replace this with the API Gateway URL you received
     const API_KEY = '';  // Add your API key if needed
 
     // Initialize by loading chat history and resizing the input
