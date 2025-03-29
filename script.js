@@ -391,6 +391,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Format markdown-like text
     function formatMarkdown(text) {
+        // Format markdown-like text
+        if (!text) return '';
+        
         // Convert paragraphs
         let formatted = text.split('\n\n').map(para => `<p>${para}</p>`).join('');
         
