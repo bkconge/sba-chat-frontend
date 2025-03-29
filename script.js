@@ -430,16 +430,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Send a message to the API
     async function sendMessageToAPI(message) {
         try {
+            // Create the request body
+            const requestBody = {
+                question: message,
+                top_k: 5
+            };
+            
+            // Log the exact request being sent
+            console.log('Sending API request:', JSON.stringify(requestBody, null, 2));
+            
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(API_KEY && { 'Authorization': `Bearer ${API_KEY}` })
                 },
-                body: JSON.stringify({
-                    question: message,
-                    top_k: 5
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
