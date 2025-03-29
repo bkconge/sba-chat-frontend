@@ -449,7 +449,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             // For demo purposes, if API is not connected, return a mock response
-            if (!data) {
+            if (!data || !data.answer) {
+                console.log('Invalid API response, using mock data instead');
                 return mockAPIResponse(message);
             }
             
