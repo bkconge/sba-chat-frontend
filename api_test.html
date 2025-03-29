@@ -84,6 +84,19 @@
             } catch (error) {
                 responseElement.textContent = `Error: ${error.message}`;
                 console.error('API Error:', error);
+                
+                // Try a simple GET request to see if the endpoint is reachable
+                fetch(API_URL, { method: 'GET' })
+                    .then(resp => {
+                        console.log('GET request status:', resp.status);
+                        return resp.text();
+                    })
+                    .then(text => {
+                        console.log('GET response text:', text);
+                    })
+                    .catch(err => {
+                        console.error('GET request failed:', err);
+                    });
             }
         });
     </script>
