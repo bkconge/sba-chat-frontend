@@ -451,13 +451,70 @@ document.addEventListener('DOMContentLoaded', function() {
             // Debug: Log the exact response format
             console.log('API Response:', JSON.stringify(data, null, 2));
             
-            // For demo purposes, if API is not connected, return a mock response
-            if (!data || !data.answer) {
-                console.log('Invalid API response, using mock data instead');
+            // Process different potential response formats
+            let answer = '';
+            let sources = [];
+            
+            // Try to extract answer and sources based on common API response formats
+            if (data && typeof data === 'object') {
+                // Format 1: { answer: "text", sources: [] } - our expected format
+                if (data.answer) {
+                    answer = data.answer;
+                    sources = data.sources || [];
+                }
+                // Format 2: { result: "text", context: [] } - common RAG format
+                else if (data.result) {
+                    answer = data.result;
+                    // Try to convert context to our sources format if possible
+                    if (data.context && Array.isArray(data.context)) {
+                        sources = data.context.map(ctx => {
+                            if (typeof ctx === 'object') {
+                                return {
+                                    citation: ctx.citation || ctx.reference || '',
+                                    source: ctx.source || ctx.document || ''
+                                };
+                            }
+                            return { citation: '', source: ctx.toString() };
+                        });
+                    }
+                }
+                // Format 3: { text: "...", documents: [] } - another common format
+                else if (data.text) {
+                    answer = data.text;
+                    if (data.documents && Array.isArray(data.documents)) {
+                        sources = data.documents.map(doc => ({ 
+                            citation: doc.reference || '',
+                            source: doc.title || doc.name || ''
+                        }));
+                    }
+                }
+                // Format 4: { content: "...", references: [] }
+                else if (data.content) {
+                    answer = data.content;
+                    if (data.references && Array.isArray(data.references)) {
+                        sources = data.references.map(ref => ({
+                            citation: ref.location || '',
+                            source: ref.title || ref.source || ''
+                        }));
+                    }
+                }
+                // Format 5: Maybe it's the response object itself?
+                else if (typeof data === 'string') {
+                    answer = data;
+                }
+            }
+            
+            // If we still couldn't extract a valid answer, use mock data
+            if (!answer) {
+                console.log('Could not extract answer from API response, using mock data instead');
                 return mockAPIResponse(message);
             }
             
-            return data;
+            // Return in our standard format
+            return {
+                answer: answer,
+                sources: sources
+            };
         } catch (error) {
             console.error('API request error:', error);
             // Return mock data for demo
