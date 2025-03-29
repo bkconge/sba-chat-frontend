@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct API Form Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        form { margin-bottom: 20px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Direct API Test</h1>
+    <p>This page tests API connectivity with multiple methods</p>
+    
+    <h2>Method 1: Form POST</h2>
+    <form id="apiForm">
+        <div>
+            <label for="question">Question:</label><br>
+            <textarea id="question" name="question" rows="3" cols="50">What are the eligibility requirements for SBA loans?</textarea>
+        </div>
+        <div>
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+    
+    <h2>Method 2: Fetch Options Test</h2>
+    <button id="optionsTest">Test OPTIONS</button>
+    
+    <h2>Method 3: Simple GET Test</h2>
+    <button id="getTest">Test GET</button>
+    
+    <h2>Method 4: Direct XMLHttpRequest</h2>
+    <button id="xhrTest">Test XHR</button>
+    
+    <div>
+        <h3>Response:</h3>
+        <pre id="response">Results will appear here...</pre>
+    </div>
+    
+    <script>
+        const API_URL = 'https://rztdhnend7.execute-api.us-east-1.amazonaws.com/default/sba-sop-agent';
+        const responseElem = document.getElementById('response');
+        
+        // Method 1: Form POST
+        document.getElementById('apiForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            responseElem.textContent = 'Loading...';
+            
+            try {
+                const question = document.getElementById('question').value;
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        top_k: 5
+                    })
+                });
+                
+                responseElem.textContent = `Status: ${response.status}\n\n`;
+                
+                try {
+                    const data = await response.json();
+                    responseElem.textContent += `Response: ${JSON.stringify(data, null, 2)}`;
+                    console.log('POST response data:', data);
+                } catch (jsonError) {
+                    const text = await response.text();
+                    responseElem.textContent += `Raw response: ${text}`;
+                    console.log('POST response text:', text);
+                }
+            } catch (error) {
+                responseElem.textContent = `Error: ${error.message}`;
+                console.error('POST error:', error);
+            }
+        });
+        
+        // Method 2: OPTIONS request
+        document.getElementById('optionsTest').addEventListener('click', async () => {
+            responseElem.textContent = 'Testing OPTIONS...';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'OPTIONS'
+                });
+                
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                
+                responseElem.textContent = `OPTIONS Status: ${response.status}\n\nHeaders: ${JSON.stringify(headers, null, 2)}`;
+                console.log('OPTIONS response:', response);
+                console.log('OPTIONS headers:', headers);
+            } catch (error) {
+                responseElem.textContent = `OPTIONS Error: ${error.message}`;
+                console.error('OPTIONS error:', error);
+            }
+        });
+        
+        // Method 3: GET request
+        document.getElementById('getTest').addEventListener('click', async () => {
+            responseElem.textContent = 'Testing GET...';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'GET'
+                });
+                
+                responseElem.textContent = `GET Status: ${response.status}\n\n`;
+                
+                try {
+                    const data = await response.json();
+                    responseElem.textContent += `Response: ${JSON.stringify(data, null, 2)}`;
+                } catch (jsonError) {
+                    const text = await response.text();
+                    responseElem.textContent += `Raw response: ${text}`;
+                    console.log('GET response text:', text);
+                }
+            } catch (error) {
+                responseElem.textContent = `GET Error: ${error.message}`;
+                console.error('GET error:', error);
+            }
+        });
+        
+        // Method 4: XMLHttpRequest
+        document.getElementById('xhrTest').addEventListener('click', () => {
+            responseElem.textContent = 'Testing XHR...';
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', API_URL, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            
+            xhr.onload = function() {
+                if (this.status >= 200 && this.status < 300) {
+                    try {
+                        const data = JSON.parse(this.responseText);
+                        responseElem.textContent = `XHR Status: ${this.status}\n\nResponse: ${JSON.stringify(data, null, 2)}`;
+                        console.log('XHR response data:', data);
+                    } catch (e) {
+                        responseElem.textContent = `XHR Status: ${this.status}\n\nRaw response: ${this.responseText}`;
+                        console.log('XHR response text:', this.responseText);
+                    }
+                } else {
+                    responseElem.textContent = `XHR Error: Status ${this.status}\n\nResponse: ${this.responseText}`;
+                    console.error('XHR error:', this.status, this.responseText);
+                }
+            };
+            
+            xhr.onerror = function() {
+                responseElem.textContent = `XHR Network Error`;
+                console.error('XHR network error');
+            };
+            
+            const question = document.getElementById('question').value;
+            xhr.send(JSON.stringify({
+                question: question,
+                top_k: 5
+            }));
+        });
+    </script>
+</body>
+</html>
