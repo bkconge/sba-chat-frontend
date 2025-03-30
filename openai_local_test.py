@@ -113,15 +113,60 @@ else:
         exit(1)
 
 def create_embedding(text: str) -> List[float]:
-    """Create an embedding for the given text using OpenAI's embeddings API"""
+    """Create an embedding for the given text using the appropriate embedding model"""
     try:
+        # Get index dimension from stats
+        index_dimension = 0
+        try:
+            if PINECONE_VERSION == "new":
+                stats = index.describe_index_stats()
+                index_dimension = stats.get('dimension', 0)
+            else:
+                stats = index.describe_index_stats()
+                index_dimension = stats.dimension if hasattr(stats, 'dimension') else 0
+            
+            print(f"Detected index dimension: {index_dimension}")
+        except Exception as e:
+            print(f"Could not determine index dimension: {e}")
+            
+        # Choose the appropriate embedding model based on dimension
+        embedding_model = "text-embedding-3-small"  # 1536 dimensions - newest model
+        
+        if index_dimension == 384:
+            # This is likely the older text-embedding-ada-002 reduced dimension
+            # Use sentence-transformers locally for 384 dimensions
+            try:
+                from sentence_transformers import SentenceTransformer
+                print("Using local SentenceTransformer for 384-dimension embeddings")
+                model = SentenceTransformer('all-MiniLM-L6-v2')  # 384 dimensions
+                embedding = model.encode(text).tolist()
+                return embedding
+            except ImportError:
+                print("SentenceTransformer not installed. Trying to install...")
+                import subprocess
+                subprocess.check_call(["pip", "install", "sentence-transformers"])
+                from sentence_transformers import SentenceTransformer
+                model = SentenceTransformer('all-MiniLM-L6-v2')
+                embedding = model.encode(text).tolist()
+                return embedding
+        elif index_dimension == 1536:
+            embedding_model = "text-embedding-3-small"  # Use OpenAI's model
+        elif index_dimension == 1024:
+            embedding_model = "text-embedding-3-large"  # For large model
+        else:
+            print(f"Unknown dimension {index_dimension}, defaulting to text-embedding-3-small")
+            embedding_model = "text-embedding-3-small"
+            
+        print(f"Using OpenAI embedding model: {embedding_model}")
         response = client.embeddings.create(
             input=text,
-            model="text-embedding-ada-002"
+            model=embedding_model
         )
         return response.data[0].embedding
     except Exception as e:
         print(f"Error creating embedding: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
@@ -142,6 +187,32 @@ def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
         broader_query = "SBA loan eligibility requirements citizenship"
         print(f"First trying a broader query: '{broader_query}'")
         
+        # Check for available namespaces
+        namespaces = []
+        try:
+            if PINECONE_VERSION == "new":
+                stats = index.describe_index_stats()
+                namespaces = list(stats.get('namespaces', {}).keys())
+            else:
+                stats = index.describe_index_stats()
+                if hasattr(stats, 'namespaces'):
+                    namespaces = list(stats.namespaces.keys())
+            
+            print(f"Available namespaces: {namespaces}")
+        except Exception as e:
+            print(f"Error getting namespaces: {e}")
+        
+        # Find target namespace
+        namespace = None
+        if 'sba-sop' in namespaces:
+            namespace = 'sba-sop'
+            print(f"Using namespace: {namespace}")
+        elif namespaces:
+            namespace = namespaces[0]
+            print(f"Using first available namespace: {namespace}")
+        else:
+            print("No specific namespace found, using default")
+            
         # Query based on client version
         if PINECONE_VERSION == "new":
             try:
@@ -151,12 +222,19 @@ def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
                 print(f"Total vectors in index: {stats.get('total_vector_count', 'unknown')}")
             except Exception as e:
                 print(f"Couldn't get index stats: {e}")
+            
+            query_params = {
+                "vector": embedding,
+                "top_k": top_k,
+                "include_metadata": True
+            }
+            
+            # Add namespace if available
+            if namespace:
+                query_params["namespace"] = namespace
                 
-            results = index.query(
-                vector=embedding,
-                top_k=top_k,
-                include_metadata=True
-            )
+            results = index.query(**query_params)
+            
             # Extract matches from response
             matches = results.get('matches', [])
             
@@ -164,11 +242,18 @@ def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
             if not matches:
                 print("No matches found, trying broader query...")
                 broader_embedding = create_embedding(broader_query)
-                broader_results = index.query(
-                    vector=broader_embedding,
-                    top_k=top_k,
-                    include_metadata=True
-                )
+                
+                broader_params = {
+                    "vector": broader_embedding,
+                    "top_k": top_k,
+                    "include_metadata": True
+                }
+                
+                # Add namespace if available
+                if namespace:
+                    broader_params["namespace"] = namespace
+                    
+                broader_results = index.query(**broader_params)
                 matches = broader_results.get('matches', [])
         else:
             # Old client
@@ -178,23 +263,36 @@ def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
                 print(f"Index stats: {stats}")
             except Exception as e:
                 print(f"Couldn't get index stats: {e}")
+            
+            query_params = {
+                "vector": embedding,
+                "top_k": top_k,
+                "include_metadata": True
+            }
+            
+            # Add namespace if available
+            if namespace:
+                query_params["namespace"] = namespace
                 
-            results = index.query(
-                vector=embedding,
-                top_k=top_k,
-                include_metadata=True
-            )
+            results = index.query(**query_params)
             matches = results.matches if hasattr(results, 'matches') else []
             
             # If no matches, try the broader query
             if not matches:
                 print("No matches found, trying broader query...")
                 broader_embedding = create_embedding(broader_query)
-                broader_results = index.query(
-                    vector=broader_embedding,
-                    top_k=top_k,
-                    include_metadata=True
-                )
+                
+                broader_params = {
+                    "vector": broader_embedding,
+                    "top_k": top_k,
+                    "include_metadata": True
+                }
+                
+                # Add namespace if available
+                if namespace:
+                    broader_params["namespace"] = namespace
+                    
+                broader_results = index.query(**broader_params)
                 matches = broader_results.matches if hasattr(broader_results, 'matches') else []
         
         print(f"Retrieved {len(matches)} relevant documents")
