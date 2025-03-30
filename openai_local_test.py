@@ -344,28 +344,50 @@ def format_context(matches: List[Dict[str, Any]]) -> tuple:
     contexts = []
     sources = []
     
-    for match in matches:
-        if 'metadata' in match and match['metadata']:
-            metadata = match['metadata']
-            
+    print("\n----- Retrieved Document Contents -----")
+    
+    for i, match in enumerate(matches):
+        metadata = {}
+        text = ""
+        source = ""
+        citation = ""
+        score = 0
+        
+        # Extract based on object type
+        if isinstance(match, dict):
+            metadata = match.get('metadata', {})
+            score = match.get('score', 0)
             # Extract the document content
             text = metadata.get('text', '')
-            
             # Extract source information
             source = metadata.get('source', '')
             citation = metadata.get('citation', '')
+        else:
+            # Object with attributes
+            metadata = getattr(match, 'metadata', {})
+            score = getattr(match, 'score', 0)
+            text = getattr(metadata, 'text', '')
+            source = getattr(metadata, 'source', '')
+            citation = getattr(metadata, 'citation', '')
+        
+        # Print document content for debugging
+        print(f"\nDocument {i+1} (score: {score}):")
+        print(f"Source: {source}, Citation: {citation}")
+        print(f"Content snippet: {text[:150]}..." if len(text) > 150 else f"Content: {text}")
+        
+        if text:
+            # Add the document to the context
+            context_item = f"\nDocument from {source}, {citation}:\n{text}\n"
+            contexts.append(context_item)
             
-            if text:
-                # Add the document to the context
-                context_item = f"\nDocument from {source}, {citation}:\n{text}\n"
-                contexts.append(context_item)
-                
-                # Add source information
-                if source and citation:
-                    sources.append({
-                        "source": source,
-                        "citation": citation
-                    })
+            # Add source information
+            if source and citation:
+                sources.append({
+                    "source": source,
+                    "citation": citation
+                })
+    
+    print("----- End of Retrieved Document Contents -----\n")
     
     return "\n".join(contexts), sources
 
@@ -388,20 +410,31 @@ def generate_response(question: str, context: str, sources: List[Dict[str, Any]]
     
 When answering questions:
 1. Use ONLY the information provided in the context
-2. If the context doesn't contain the information needed, say "I don't have specific information about that in my database"
-3. Format your citations precisely as "Chapter X.Y.Z" or "Section X.Y.Z" when referring to specific parts of the SOP
-4. Be concise and direct in your answers
-5. ALWAYS include citations for your information
+2. For citizenship/eligibility questions, focus on any relevant information about ownership requirements, eligible/ineligible businesses, and specific citizenship status requirements
+3. Look for information on ownership structures, partnerships, and citizenship criteria in the context
+4. If you find ANY information about citizenship, eligibility, partnerships, or ownership requirements, include it in your answer
+5. Only say "I don't have specific information about that in my database" if there is absolutely no relevant information in the provided context
+6. Format your citations precisely as "Chapter X.Y.Z" or "Section X.Y.Z" when referring to specific parts of the SOP
+7. Be concise and direct in your answers
+8. ALWAYS include citations for your information
 
 IMPORTANT: Never mention that you're using "context" or "documents" - simply provide the information as if you're an SBA expert.
 """
 
     user_prompt = f"""Question: {question}
 
+The question is about whether non-US citizens can be business partners with US citizens for SBA loans. Please look carefully in the context for ANY information about:
+- Citizenship requirements for SBA loans
+- Eligibility criteria for business owners
+- Partnership requirements
+- Ownership structure requirements
+- Immigrant, non-citizen, or lawful permanent resident statuses
+- Any exclusions or special conditions
+
 Context information:
 {context}
 
-Please answer the question based strictly on the information provided above, with proper citations to the SOP sections.
+If you find ANY information in the context that could help answer the question about citizenship requirements for partnership loans, please include it.
 """
 
     try:
@@ -494,9 +527,12 @@ def generate_fallback_response(question: str) -> Dict[str, Any]:
     """Generate a response without context when no documents are found"""
     system_prompt = """You are an expert on SBA Standard Operating Procedures (SOPs).
     
-When answering questions:
-1. Provide general information about SBA policies
-2. If you don't have specific information, clearly state that
+When answering questions about citizenship and eligibility:
+1. Provide accurate information about SBA policies regarding citizenship requirements
+2. For questions about US citizens partnering with non-US citizens, explain the general requirements:
+   - Non-US citizens must typically be lawful permanent residents (green card holders)
+   - The business must be 51% owned by US citizens or permanent residents in most cases
+   - There are specific requirements for different visa types
 3. Be truthful and direct in your answers
 4. Focus on what would likely be in the SBA SOPs
 
@@ -506,7 +542,14 @@ latest SBA policies."""
 
     user_prompt = f"""Question: {question}
 
-Please provide your best answer based on general knowledge about SBA policies.
+This question is specifically about SBA loan eligibility for partnerships between US citizens and non-US citizens.
+
+Please provide detailed information about:
+1. Whether non-US citizens can be eligible for SBA loans
+2. What specific residency statuses are required (green card, etc.)
+3. Any ownership percentage requirements that might apply
+4. Any special considerations for partnerships with mixed citizenship
+
 Make it clear that this is general information and may not reflect the most 
 current SBA Standard Operating Procedures."""
 
