@@ -7,7 +7,7 @@ This script bypasses Lambda and directly:
 3. Formats the response with citations
 
 Setup:
-1. Install required packages: pip install openai pinecone-client python-dotenv
+1. Install required packages: pip install openai pinecone-python-client python-dotenv
 2. Create a .env file with your API keys
 3. Run this script directly
 
@@ -29,9 +29,9 @@ except ImportError:
     exit(1)
 
 try:
-    import pinecone
+    from pinecone import Pinecone, ServerlessSpec
 except ImportError:
-    print("Pinecone package not installed. Install with: pip install pinecone-client")
+    print("Pinecone package not installed. Install with: pip install pinecone-python-client")
     exit(1)
 
 # Load environment variables from .env file
@@ -53,20 +53,24 @@ if not PINECONE_API_KEY:
 # Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Initialize Pinecone
-pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+# Initialize Pinecone with the new API
+pc = Pinecone(api_key=PINECONE_API_KEY)
+
+# List available indexes
+indexes = pc.list_indexes()
+print(f"Available indexes: {[idx.name for idx in indexes]}")
 
 # Connect to index
-if PINECONE_INDEX not in pinecone.list_indexes():
-    print(f"Index {PINECONE_INDEX} does not exist. Available indexes: {pinecone.list_indexes()}")
-    if pinecone.list_indexes():
-        PINECONE_INDEX = pinecone.list_indexes()[0]
+if not any(idx.name == PINECONE_INDEX for idx in indexes):
+    print(f"Index {PINECONE_INDEX} does not exist.")
+    if indexes:
+        PINECONE_INDEX = indexes[0].name
         print(f"Using index: {PINECONE_INDEX}")
     else:
         print("No indexes available. Please create an index in Pinecone first.")
         exit(1)
 
-index = pinecone.Index(PINECONE_INDEX)
+index = pc.Index(PINECONE_INDEX)
 
 def create_embedding(text: str) -> List[float]:
     """Create an embedding for the given text using OpenAI's embeddings API"""
@@ -92,7 +96,8 @@ def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
             top_k=top_k,
             include_metadata=True
         )
-        return results.matches
+        # Updated for new Pinecone client
+        return results['matches'] if 'matches' in results else []
     except Exception as e:
         print(f"Error querying Pinecone: {e}")
         return []
