@@ -126,13 +126,32 @@ def create_embedding(text: str) -> List[float]:
 
 def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
     """Query Pinecone for relevant documents based on the question embedding"""
+    print(f"Generating embedding for query: '{question}'")
     embedding = create_embedding(question)
     if not embedding:
+        print("Failed to create embedding")
         return []
     
+    print(f"Embedding generated successfully (length: {len(embedding)})")
+    
     try:
+        print(f"Querying Pinecone index '{PINECONE_INDEX}' with top_k={top_k}")
+        
+        # Try a simple broader query first
+        keywords = ["sba", "loan", "eligibility", "requirements"]
+        broader_query = "SBA loan eligibility requirements citizenship"
+        print(f"First trying a broader query: '{broader_query}'")
+        
         # Query based on client version
         if PINECONE_VERSION == "new":
+            try:
+                # Get index stats
+                stats = index.describe_index_stats()
+                print(f"Index stats: {stats}")
+                print(f"Total vectors in index: {stats.get('total_vector_count', 'unknown')}")
+            except Exception as e:
+                print(f"Couldn't get index stats: {e}")
+                
             results = index.query(
                 vector=embedding,
                 top_k=top_k,
@@ -140,19 +159,60 @@ def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
             )
             # Extract matches from response
             matches = results.get('matches', [])
+            
+            # If no matches, try the broader query
+            if not matches:
+                print("No matches found, trying broader query...")
+                broader_embedding = create_embedding(broader_query)
+                broader_results = index.query(
+                    vector=broader_embedding,
+                    top_k=top_k,
+                    include_metadata=True
+                )
+                matches = broader_results.get('matches', [])
         else:
             # Old client
+            try:
+                # Get index stats
+                stats = index.describe_index_stats()
+                print(f"Index stats: {stats}")
+            except Exception as e:
+                print(f"Couldn't get index stats: {e}")
+                
             results = index.query(
                 vector=embedding,
                 top_k=top_k,
                 include_metadata=True
             )
             matches = results.matches if hasattr(results, 'matches') else []
+            
+            # If no matches, try the broader query
+            if not matches:
+                print("No matches found, trying broader query...")
+                broader_embedding = create_embedding(broader_query)
+                broader_results = index.query(
+                    vector=broader_embedding,
+                    top_k=top_k,
+                    include_metadata=True
+                )
+                matches = broader_results.matches if hasattr(broader_results, 'matches') else []
         
         print(f"Retrieved {len(matches)} relevant documents")
+        
+        # Debug: Print match scores and metadata
+        if matches:
+            print("\nTop matches:")
+            for i, match in enumerate(matches[:3]):
+                score = match.get('score', 0) if isinstance(match, dict) else getattr(match, 'score', 0)
+                metadata = match.get('metadata', {}) if isinstance(match, dict) else getattr(match, 'metadata', {})
+                print(f"Match {i+1} (score: {score}): {metadata.get('source', 'unknown')} - {metadata.get('citation', 'unknown')}")
+                
         return matches
     except Exception as e:
         print(f"Error querying Pinecone: {e}")
+        print(f"Exception type: {type(e)}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def format_context(matches: List[Dict[str, Any]]) -> tuple:
@@ -263,7 +323,22 @@ def main():
         matches = query_pinecone(question, top_k=5)
         
         if not matches:
-            print("No relevant documents found.")
+            print("No relevant documents found. Using fallback mode...")
+            # Fallback - directly query OpenAI without context
+            fallback_response = generate_fallback_response(question)
+            
+            end_time = time.time()
+            
+            # Print the fallback response
+            print("\n=== Fallback Response (no documents) ===")
+            print(fallback_response["answer"])
+            
+            print(f"\nFallback response generated in {end_time - start_time:.2f} seconds")
+            
+            # Optionally write to file
+            with open("last_response.json", "w") as f:
+                json.dump(fallback_response, f, indent=2)
+            print("Response saved to last_response.json")
             continue
             
         print(f"Found {len(matches)} relevant documents.")
@@ -290,6 +365,49 @@ def main():
         with open("last_response.json", "w") as f:
             json.dump(response, f, indent=2)
         print("Response saved to last_response.json")
+
+def generate_fallback_response(question: str) -> Dict[str, Any]:
+    """Generate a response without context when no documents are found"""
+    system_prompt = """You are an expert on SBA Standard Operating Procedures (SOPs).
+    
+When answering questions:
+1. Provide general information about SBA policies
+2. If you don't have specific information, clearly state that
+3. Be truthful and direct in your answers
+4. Focus on what would likely be in the SBA SOPs
+
+IMPORTANT: Since specific SBA SOP documents aren't available for this question, 
+explain that you're providing general information that may not reflect the
+latest SBA policies."""
+
+    user_prompt = f"""Question: {question}
+
+Please provide your best answer based on general knowledge about SBA policies.
+Make it clear that this is general information and may not reflect the most 
+current SBA Standard Operating Procedures."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.0
+        )
+        
+        answer = response.choices[0].message.content
+        
+        return {
+            "answer": answer,
+            "sources": [{"citation": "No specific SOP reference available", "source": "General knowledge"}]
+        }
+    except Exception as e:
+        print(f"Error generating fallback response: {e}")
+        return {
+            "answer": "I'm unable to provide information on this topic due to an error. Please try again with a different question.",
+            "sources": []
+        }
 
 if __name__ == "__main__":
     main()
