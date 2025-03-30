@@ -136,19 +136,45 @@ def create_embedding(text: str) -> List[float]:
             # This is likely the older text-embedding-ada-002 reduced dimension
             # Use sentence-transformers locally for 384 dimensions
             try:
-                from sentence_transformers import SentenceTransformer
-                print("Using local SentenceTransformer for 384-dimension embeddings")
-                model = SentenceTransformer('all-MiniLM-L6-v2')  # 384 dimensions
-                embedding = model.encode(text).tolist()
-                return embedding
-            except ImportError:
-                print("SentenceTransformer not installed. Trying to install...")
-                import subprocess
-                subprocess.check_call(["pip", "install", "sentence-transformers"])
-                from sentence_transformers import SentenceTransformer
-                model = SentenceTransformer('all-MiniLM-L6-v2')
-                embedding = model.encode(text).tolist()
-                return embedding
+                try:
+                    # Try importing required packages
+                    import numpy as np
+                    from sentence_transformers import SentenceTransformer
+                    print("Using local SentenceTransformer for 384-dimension embeddings")
+                    model = SentenceTransformer('all-MiniLM-L6-v2')  # 384 dimensions
+                    embedding = model.encode(text).tolist()
+                    return embedding
+                except (ImportError, RuntimeError) as e:
+                    print(f"Error with SentenceTransformer: {e}")
+                    print("Required packages not installed. Trying to install...")
+                    import subprocess
+                    print("Installing numpy...")
+                    subprocess.check_call(["pip", "install", "numpy"])
+                    print("Installing torch...")
+                    subprocess.check_call(["pip", "install", "torch"])
+                    print("Installing sentence-transformers...")
+                    subprocess.check_call(["pip", "install", "sentence-transformers"])
+                    
+                    print("Packages installed, trying again...")
+                    import numpy as np
+                    from sentence_transformers import SentenceTransformer
+                    model = SentenceTransformer('all-MiniLM-L6-v2')
+                    embedding = model.encode(text).tolist()
+                    return embedding
+            except Exception as e:
+                print(f"Failed to use SentenceTransformer: {e}")
+                print("Falling back to OpenAI embeddings with dimension reduction...")
+                # Fallback to OpenAI and then reduce dimensions
+                response = client.embeddings.create(
+                    input=text,
+                    model="text-embedding-3-small"  # 1536 dimensions
+                )
+                # Get the full embedding
+                full_embedding = response.data[0].embedding
+                # Reduce to 384 dimensions by taking every 4th value
+                reduced_embedding = [full_embedding[i] for i in range(0, 1536, 4)][:384]
+                print(f"Reduced OpenAI embedding from 1536 to {len(reduced_embedding)} dimensions")
+                return reduced_embedding
         elif index_dimension == 1536:
             embedding_model = "text-embedding-3-small"  # Use OpenAI's model
         elif index_dimension == 1024:
