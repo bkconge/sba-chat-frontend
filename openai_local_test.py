@@ -7,7 +7,7 @@ This script bypasses Lambda and directly:
 3. Formats the response with citations
 
 Setup:
-1. Install required packages: pip install openai pinecone-python-client python-dotenv
+1. Install required packages: pip install openai pinecone python-dotenv
 2. Create a .env file with your API keys
 3. Run this script directly
 
@@ -28,10 +28,20 @@ except ImportError:
     print("OpenAI package not installed. Install with: pip install openai")
     exit(1)
 
+# Try different ways to import Pinecone based on version
 try:
-    from pinecone import Pinecone, ServerlessSpec
+    try:
+        # Try newer Pinecone client first
+        from pinecone import Pinecone
+        PINECONE_VERSION = "new"
+        print("Using newer Pinecone client")
+    except ImportError:
+        # Fall back to older client
+        import pinecone
+        PINECONE_VERSION = "old"
+        print("Using older Pinecone client")
 except ImportError:
-    print("Pinecone package not installed. Install with: pip install pinecone-python-client")
+    print("Pinecone package not installed. Install with: pip install pinecone")
     exit(1)
 
 # Load environment variables from .env file
@@ -53,24 +63,54 @@ if not PINECONE_API_KEY:
 # Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Initialize Pinecone with the new API
-pc = Pinecone(api_key=PINECONE_API_KEY)
-
-# List available indexes
-indexes = pc.list_indexes()
-print(f"Available indexes: {[idx.name for idx in indexes]}")
-
-# Connect to index
-if not any(idx.name == PINECONE_INDEX for idx in indexes):
-    print(f"Index {PINECONE_INDEX} does not exist.")
-    if indexes:
-        PINECONE_INDEX = indexes[0].name
-        print(f"Using index: {PINECONE_INDEX}")
-    else:
-        print("No indexes available. Please create an index in Pinecone first.")
+# Initialize Pinecone based on version
+if PINECONE_VERSION == "new":
+    # New client
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    
+    # List available indexes
+    try:
+        indexes = pc.list_indexes()
+        index_names = [idx.name for idx in indexes]
+        print(f"Available indexes: {index_names}")
+        
+        # Connect to index
+        if PINECONE_INDEX not in index_names:
+            print(f"Index {PINECONE_INDEX} does not exist.")
+            if index_names:
+                PINECONE_INDEX = index_names[0]
+                print(f"Using index: {PINECONE_INDEX}")
+            else:
+                print("No indexes available. Please create an index in Pinecone first.")
+                exit(1)
+                
+        index = pc.Index(PINECONE_INDEX)
+    except Exception as e:
+        print(f"Error connecting to Pinecone (new client): {e}")
         exit(1)
-
-index = pc.Index(PINECONE_INDEX)
+else:
+    # Old client
+    try:
+        pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+        
+        # List available indexes
+        index_names = pinecone.list_indexes()
+        print(f"Available indexes: {index_names}")
+        
+        # Connect to index
+        if PINECONE_INDEX not in index_names:
+            print(f"Index {PINECONE_INDEX} does not exist.")
+            if index_names:
+                PINECONE_INDEX = index_names[0]
+                print(f"Using index: {PINECONE_INDEX}")
+            else:
+                print("No indexes available. Please create an index in Pinecone first.")
+                exit(1)
+                
+        index = pinecone.Index(PINECONE_INDEX)
+    except Exception as e:
+        print(f"Error connecting to Pinecone (old client): {e}")
+        exit(1)
 
 def create_embedding(text: str) -> List[float]:
     """Create an embedding for the given text using OpenAI's embeddings API"""
@@ -91,13 +131,26 @@ def query_pinecone(question: str, top_k: int = 5) -> List[Dict[str, Any]]:
         return []
     
     try:
-        results = index.query(
-            vector=embedding,
-            top_k=top_k,
-            include_metadata=True
-        )
-        # Updated for new Pinecone client
-        return results['matches'] if 'matches' in results else []
+        # Query based on client version
+        if PINECONE_VERSION == "new":
+            results = index.query(
+                vector=embedding,
+                top_k=top_k,
+                include_metadata=True
+            )
+            # Extract matches from response
+            matches = results.get('matches', [])
+        else:
+            # Old client
+            results = index.query(
+                vector=embedding,
+                top_k=top_k,
+                include_metadata=True
+            )
+            matches = results.matches if hasattr(results, 'matches') else []
+        
+        print(f"Retrieved {len(matches)} relevant documents")
+        return matches
     except Exception as e:
         print(f"Error querying Pinecone: {e}")
         return []
