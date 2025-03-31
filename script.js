@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // API configuration
-    const API_URL = 'https://xrn8eyh485.execute-api.us-east-1.amazonaws.com/prod';  // Replace this with the API Gateway URL you received
+    const API_URL = 'https://xrn8eyh485.execute-api.us-east-1.amazonaws.com/prod/api/chat';  // Replace this with the API Gateway URL you received
     const API_KEY = '';  // Add your API key if needed
 
     // Initialize by loading chat history and resizing the input
