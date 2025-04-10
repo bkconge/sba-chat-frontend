@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local SBA Chat Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        .container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        .user {
+            background-color: #e6f7ff;
+            text-align: right;
+            margin-left: 20%;
+        }
+        .assistant {
+            background-color: #f0f0f0;
+            margin-right: 20%;
+        }
+        .input-container {
+            display: flex;
+        }
+        #question {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .source-item {
+            background: #f5f5f5;
+            padding: 5px 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        h2 {
+            margin-top: 30px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>SBA Chat Local Test</h1>
+    
+    <div class="container">
+        <h2>Chat Interface</h2>
+        <div id="chat" class="chat-container"></div>
+        <div class="input-container">
+            <input type="text" id="question" placeholder="Ask a question about SBA loans..." value="What are the eligibility requirements for SBA loans?">
+            <button id="sendBtn">Send</button>
+            <button id="mockBtn">Use Mock Data</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>API Response (Raw)</h2>
+        <pre id="rawResponse">No data yet</pre>
+        
+        <h2>Processed Response</h2>
+        <pre id="processedResponse">No data yet</pre>
+        
+        <h2>API Debug Controls</h2>
+        <button id="testParsingBtn">Test Response Parsing</button>
+        <button id="clearLogBtn">Clear Log</button>
+    </div>
+    
+    <script>
+        // Elements
+        const chatContainer = document.getElementById('chat');
+        const questionInput = document.getElementById('question');
+        const sendButton = document.getElementById('sendBtn');
+        const mockButton = document.getElementById('mockBtn');
+        const rawResponseElement = document.getElementById('rawResponse');
+        const processedResponseElement = document.getElementById('processedResponse');
+        const testParsingButton = document.getElementById('testParsingBtn');
+        const clearLogButton = document.getElementById('clearLogBtn');
+        
+        // API URL
+        const API_URL = 'https://rztdhnend7.execute-api.us-east-1.amazonaws.com/default/sba-sop-agent';
+        
+        // Add a message to the chat
+        function addMessage(text, type, sources = []) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            let messageContent = `<p>${text}</p>`;
+            
+            // Add sources if provided
+            if (sources && sources.length > 0) {
+                messageContent += '<div class="sources">';
+                messageContent += '<strong>Sources:</strong>';
+                sources.forEach(source => {
+                    messageContent += `<div class="source-item">${source.citation} in ${source.source}</div>`;
+                });
+                messageContent += '</div>';
+            }
+            
+            messageDiv.innerHTML = messageContent;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Process API response format
+        function processAPIResponse(data) {
+            console.log('Processing API response:', data);
+            rawResponseElement.textContent = JSON.stringify(data, null, 2);
+            
+            let answer = '';
+            let sources = [];
+            
+            // Try to extract answer and sources based on common API response formats
+            if (data && typeof data === 'object') {
+                // Format 0: API Gateway Lambda Proxy format with body as string
+                if (data.statusCode && data.body && typeof data.body === 'string') {
+                    try {
+                        // Parse the nested body JSON string
+                        const bodyData = JSON.parse(data.body);
+                        console.log('Parsed body data:', bodyData);
+                        
+                        if (bodyData.answer) {
+                            answer = bodyData.answer;
+                            sources = bodyData.sources || [];
+                            console.log('Found answer in parsed body');
+                        }
+                    } catch (e) {
+                        console.error('Error parsing body:', e);
+                    }
+                }
+                // Format 1: { answer: "text", sources: [] } - our expected format
+                else if (data.answer) {
+                    answer = data.answer;
+                    sources = data.sources || [];
+                }
+                // Format 2: { result: "text", context: [] } - common RAG format
+                else if (data.result) {
+                    answer = data.result;
+                    sources = []; // Simplified for this test
+                }
+                // Format 3: { text: "...", documents: [] } - another common format
+                else if (data.text) {
+                    answer = data.text;
+                    sources = []; // Simplified for this test
+                }
+                // Format 4: { content: "...", references: [] }
+                else if (data.content) {
+                    answer = data.content;
+                    sources = []; // Simplified for this test
+                }
+            }
+            
+            // If we still couldn't extract a valid answer, return null
+            if (!answer) {
+                console.log('Could not extract answer from API response');
+                return null;
+            }
+            
+            // Return in our standard format
+            const result = {
+                answer: answer,
+                sources: sources
+            };
+            
+            processedResponseElement.textContent = JSON.stringify(result, null, 2);
+            return result;
+        }
+        
+        // Send a message to the API
+        async function sendMessageToAPI(message) {
+            try {
+                // Create the request body
+                const requestBody = {
+                    question: message,
+                    top_k: 5
+                };
+                
+                // Log the exact request being sent
+                console.log('Sending API request:', JSON.stringify(requestBody, null, 2));
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                return processAPIResponse(data);
+            } catch (error) {
+                console.error('API Error:', error);
+                rawResponseElement.textContent = `Error: ${error.message}`;
+                return null;
+            }
+        }
+        
+        // Mock API response for testing
+        function mockAPIResponse() {
+            const mockData = {
+                answer: "SBA loan eligibility generally requires your business to be for-profit, operating in the US, have invested equity, and have exhausted other financing options.",
+                sources: [
+                    { 
+                        citation: "Chapter 2.A on page 104", 
+                        source: "SOP 50 10 6" 
+                    },
+                    { 
+                        citation: "Chapter 3.B.2 on page 127", 
+                        source: "SOP 50 10 6" 
+                    }
+                ]
+            };
+            
+            return mockData;
+        }
+        
+        // Event handlers
+        sendButton.addEventListener('click', async () => {
+            const question = questionInput.value.trim();
+            if (!question) return;
+            
+            // Add user message
+            addMessage(question, 'user');
+            
+            // Disable button while processing
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+            
+            // Send to API
+            const response = await sendMessageToAPI(question);
+            
+            // Re-enable button
+            sendButton.disabled = false;
+            sendButton.textContent = 'Send';
+            
+            // Handle response
+            if (response) {
+                addMessage(response.answer, 'assistant', response.sources);
+            } else {
+                addMessage("Sorry, I couldn't process your request. Please try again.", 'assistant');
+            }
+        });
+        
+        mockButton.addEventListener('click', () => {
+            const question = questionInput.value.trim();
+            if (!question) return;
+            
+            // Add user message
+            addMessage(question, 'user');
+            
+            // Get mock response
+            const response = mockAPIResponse();
+            rawResponseElement.textContent = JSON.stringify(response, null, 2);
+            processedResponseElement.textContent = JSON.stringify(response, null, 2);
+            
+            // Add assistant message
+            addMessage(response.answer, 'assistant', response.sources);
+        });
+        
+        testParsingButton.addEventListener('click', () => {
+            // Test case for API Gateway Lambda Proxy format
+            const testData = {
+                statusCode: 200,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                },
+                body: JSON.stringify({
+                    answer: "This is a test answer from the Lambda proxy format.",
+                    sources: [
+                        { citation: "Test Citation 1", source: "Test Source 1" },
+                        { citation: "Test Citation 2", source: "Test Source 2" }
+                    ]
+                })
+            };
+            
+            rawResponseElement.textContent = JSON.stringify(testData, null, 2);
+            
+            // Process the test data
+            const result = processAPIResponse(testData);
+            
+            // Display the result
+            if (result) {
+                addMessage(result.answer, 'assistant', result.sources);
+            } else {
+                addMessage("Test parsing failed", 'assistant');
+            }
+        });
+        
+        clearLogButton.addEventListener('click', () => {
+            rawResponseElement.textContent = 'No data yet';
+            processedResponseElement.textContent = 'No data yet';
+        });
+        
+        // Add a welcome message
+        addMessage("Hello! I'm your SBA loan assistant. I can help answer questions about SBA Standard Operating Procedures. What would you like to know?", 'assistant');
+    </script>
+</body>
+</html>

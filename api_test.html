@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.5;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #response {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    <p>This page tests the SBA SOP Agent API directly, bypassing any other frontend code.</p>
+    
+    <div>
+        <textarea id="question" rows="4" cols="50" placeholder="Enter your question here...">What are the eligibility requirements for SBA loans?</textarea>
+    </div>
+    
+    <button id="testButton">Test API</button>
+    
+    <div id="response">
+        <h3>Response:</h3>
+        <pre id="responseData">Click "Test API" to see the results...</pre>
+    </div>
+
+    <script>
+        document.getElementById('testButton').addEventListener('click', async () => {
+            const question = document.getElementById('question').value.trim();
+            const responseElement = document.getElementById('responseData');
+            
+            if (!question) {
+                responseElement.textContent = 'Please enter a question';
+                return;
+            }
+            
+            responseElement.textContent = 'Loading...';
+            
+            try {
+                const API_URL = 'https://rztdhnend7.execute-api.us-east-1.amazonaws.com/default/sba-sop-agent';
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        top_k: 5
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                responseElement.textContent = JSON.stringify(data, null, 2);
+                
+                // Also log to console for inspection
+                console.log('API Response:', data);
+                
+            } catch (error) {
+                responseElement.textContent = `Error: ${error.message}`;
+                console.error('API Error:', error);
+                
+                // Try a simple GET request to see if the endpoint is reachable
+                fetch(API_URL, { method: 'GET' })
+                    .then(resp => {
+                        console.log('GET request status:', resp.status);
+                        return resp.text();
+                    })
+                    .then(text => {
+                        console.log('GET response text:', text);
+                    })
+                    .catch(err => {
+                        console.error('GET request failed:', err);
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
