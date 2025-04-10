@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <img src="logo.png" alt="Assistant">
             </div>
             <div class="content">
-                <p>Hello! I'm your SBA loan assistant. I can help answer questions about SBA Standard Operating Procedures, guidelines, and requirements.</p>
+                <p>Hello! I'm your SBA loan assistant. I can help answer questions about SBA loan eligibility, guidelines, and requirements.</p>
                 <p>What would you like to know about SBA loans?</p>
             </div>
         `;
