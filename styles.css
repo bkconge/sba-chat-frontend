@@ -50,7 +50,7 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    padding: 16px 0;
+    padding: 0;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     position: absolute;
@@ -62,6 +62,63 @@ body {
 
 .chat-history-panel.open {
     transform: translateX(0);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: white;
+    position: relative;
+}
+
+.history-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 0;
+}
+
+#history-close-button {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+    position: absolute; /* Position absolutely */
+    right: 10px;        /* 10px from the right edge */
+    top: 50%;           /* Center vertically */
+    transform: translateY(-50%); /* Fine-tune vertical centering */
+    z-index: 15;        /* Ensure it's above other elements */
+    width: 30px;        /* Increased width */
+    height: 30px;       /* Increased height */
+    opacity: 1;         /* Make fully visible */
+    pointer-events: auto; /* Ensure it's clickable */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Add subtle shadow */
+}
+
+#history-close-button:hover {
+    background-color: #e0e0e0;
+    color: var(--primary-color);
+}
+
+#history-close-button svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.history-list-container {
+    padding: 16px 0;
+    overflow-y: auto;
+    flex-grow: 1;
 }
 
 .history-item {

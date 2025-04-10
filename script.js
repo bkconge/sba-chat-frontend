@@ -14,6 +14,57 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentChatId = null;
     let chatHistory = [];
 
+    // CRITICAL FIX: Remove initial disabled state from the button
+    sendButton.removeAttribute('disabled');
+    
+    // DIRECT INPUT HANDLER: Enable/disable button based on input
+    messageInput.addEventListener('input', function() {
+        sendButton.disabled = !this.value.trim();
+        resizeTextarea();
+    });
+    
+    // DIRECT ENTER KEY HANDLER: Submit on Enter
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!isProcessing && this.value.trim()) {
+                messageForm.dispatchEvent(new Event('submit'));
+            }
+        }
+    });
+    
+    // Add chat history button click handler
+    chatHistoryButton.addEventListener('click', function() {
+        toggleChatHistoryPanel();
+    });
+    
+    // CRITICAL FIX: Add a direct event listener for the history close button
+    const historyCloseBtn = document.getElementById('history-close-button');
+    if (historyCloseBtn) {
+        console.log('Setting up close button handler');
+        historyCloseBtn.addEventListener('click', function(e) {
+            console.log('History close button clicked');
+            e.preventDefault(); // Prevent any default action
+            e.stopPropagation(); // Stop event bubbling
+            toggleChatHistoryPanel(false);
+        });
+    } else {
+        console.error('History close button not found in DOM');
+    }
+    
+    // EMERGENCY FIX FOR CLOSE BUTTON
+    document.getElementById('history-close-button').onclick = function() {
+        console.log('Close button clicked - DIRECT HANDLER');
+        document.getElementById('chat-history-panel').classList.remove('open');
+        return false; // Prevent default action
+    };
+    
+    // CRITICAL FIX: Explicitly add the welcome message immediately
+    // Clear any existing messages first
+    messagesContainer.innerHTML = '';
+    // Add the welcome message
+    addWelcomeMessage();
+    
     // Load chat history from localStorage
     function loadChatHistory() {
         const savedHistory = localStorage.getItem('sbaChatHistory');
@@ -246,42 +297,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function initialize() {
         console.log('Initializing SBA Loan Assistant...');
         
-        // Enable the button when text is entered
-        messageInput.addEventListener('input', function() {
-            sendButton.disabled = !this.value.trim();
-            resizeTextarea();
-        });
-        
-        // Add keyboard event listener for Enter key
-        messageInput.addEventListener('keydown', function(e) {
-            // Check if Enter is pressed and not with Shift key (Shift+Enter for new line)
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Prevent default to avoid adding a new line
-                if (!isProcessing && this.value.trim()) {
-                    messageForm.dispatchEvent(new Event('submit'));
-                }
-            }
-        });
-        
-        // Add click handler for chat history button
-        chatHistoryButton.addEventListener('click', function() {
-            toggleChatHistoryPanel();
-        });
-        
-        // Add click handler for history close button
-        if (historyCloseButton) {
-            historyCloseButton.addEventListener('click', function() {
-                toggleChatHistoryPanel(false);
-            });
-        }
-        
         // Load existing chat history or create a new chat
         loadChatHistory();
         if (chatHistory.length > 0) {
             loadChat(chatHistory[0].id);
         } else {
             initNewChat();
-            addWelcomeMessage();
+            // Welcome message is now added directly at the top level, so don't add it again here
+            // addWelcomeMessage(); - REMOVED to prevent double welcome message
         }
         
         // Focus the input on page load
@@ -294,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
         welcomeElement.className = 'message assistant';
         welcomeElement.innerHTML = `
             <div class="avatar">
-                <img src="logo.png" alt="Assistant">
+                <img src="favicon.png" alt="Assistant">
             </div>
             <div class="content">
                 <p>Hello! I'm your SBA loan assistant. I can help answer questions about SBA loan eligibility, guidelines, and requirements.</p>
@@ -362,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         messageElement.innerHTML = `
             <div class="avatar">
-                <img src="logo.png" alt="Assistant">
+                <img src="favicon.png" alt="Assistant">
             </div>
             <div class="content">
                 ${formattedText}
@@ -397,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
         typingElement.className = 'message assistant';
         typingElement.innerHTML = `
             <div class="avatar">
-                <img src="logo.png" alt="Assistant">
+                <img src="favicon.png" alt="Assistant">
             </div>
             <div class="content">
                 <p>
