@@ -713,6 +713,47 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize the chat interface
     initialize();
+    
+    // LAST RESORT FIX - ADD A BIG BUTTON AT THE BOTTOM OF THE PANEL
+    if (chatHistoryPanel) {
+        console.log('Creating big close button at bottom of panel');
+        
+        // Create a container for the button
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            background-color: white;
+            position: sticky;
+            bottom: 0;
+        `;
+        
+        // Create a big, unmissable close button
+        const bigCloseButton = document.createElement('button');
+        bigCloseButton.textContent = 'Close Chat History';
+        bigCloseButton.style.cssText = `
+            background-color: #003a8c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        `;
+        
+        // Add click event
+        bigCloseButton.onclick = function() {
+            console.log('Big close button clicked');
+            chatHistoryPanel.classList.remove('open');
+        };
+        
+        // Add button to container and container to panel
+        buttonContainer.appendChild(bigCloseButton);
+        chatHistoryPanel.appendChild(buttonContainer);
+    }
 });
 
 // Webflow embed code initialization
