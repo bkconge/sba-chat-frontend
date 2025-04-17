@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Create the request body
             const requestBody = {
-                question: message,
+                query: message,       // <<< Changed key from 'question' to 'query'
                 top_k: 5
             };
             
