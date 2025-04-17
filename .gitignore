@@ -1,0 +1,46 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Dependencies
+node_modules/
+bower_components/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+dist/
+build/
+out/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+*.log
+.cache/
+.temp/
+TODO.md
+
+# Local development server
+.netlify/
+.vercel/
+
+# Python virtual environment
+venv/
+__pycache__/
+*.py[cod]
+*$py.class

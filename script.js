@@ -7,12 +7,64 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearChatButton = document.getElementById('clear-chat');
     const chatHistoryButton = document.getElementById('chat-history-button');
     const chatHistoryPanel = document.getElementById('chat-history-panel');
+    const historyCloseButton = document.getElementById('history-close-button');
     
     // Global variables
     let isProcessing = false;
     let currentChatId = null;
     let chatHistory = [];
 
+    // CRITICAL FIX: Remove initial disabled state from the button
+    sendButton.removeAttribute('disabled');
+    
+    // DIRECT INPUT HANDLER: Enable/disable button based on input
+    messageInput.addEventListener('input', function() {
+        sendButton.disabled = !this.value.trim();
+        resizeTextarea();
+    });
+    
+    // DIRECT ENTER KEY HANDLER: Submit on Enter
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!isProcessing && this.value.trim()) {
+                messageForm.dispatchEvent(new Event('submit'));
+            }
+        }
+    });
+    
+    // Add chat history button click handler
+    chatHistoryButton.addEventListener('click', function() {
+        toggleChatHistoryPanel();
+    });
+    
+    // CRITICAL FIX: Add a direct event listener for the history close button
+    const historyCloseBtn = document.getElementById('history-close-button');
+    if (historyCloseBtn) {
+        console.log('Setting up close button handler');
+        historyCloseBtn.addEventListener('click', function(e) {
+            console.log('History close button clicked');
+            e.preventDefault(); // Prevent any default action
+            e.stopPropagation(); // Stop event bubbling
+            toggleChatHistoryPanel(false);
+        });
+    } else {
+        console.error('History close button not found in DOM');
+    }
+    
+    // EMERGENCY FIX FOR CLOSE BUTTON
+    document.getElementById('history-close-button').onclick = function() {
+        console.log('Close button clicked - DIRECT HANDLER');
+        document.getElementById('chat-history-panel').classList.remove('open');
+        return false; // Prevent default action
+    };
+    
+    // CRITICAL FIX: Explicitly add the welcome message immediately
+    // Clear any existing messages first
+    messagesContainer.innerHTML = '';
+    // Add the welcome message
+    addWelcomeMessage();
+    
     // Load chat history from localStorage
     function loadChatHistory() {
         const savedHistory = localStorage.getItem('sbaChatHistory');
@@ -241,26 +293,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const API_URL = 'https://nadm4dyid7.execute-api.us-east-1.amazonaws.com/api/chat';  // Updated API Gateway URL
     const API_KEY = '';  // Add your API key if needed
 
-    // Initialize by loading chat history and resizing the input
-    loadChatHistory();
-    
-    // If we have chat history, load the most recent chat
-    if (chatHistory.length > 0) {
-        loadChat(chatHistory[0].id);
-    } else {
-        // Otherwise initialize a new chat
-        initNewChat();
+    // Initialize function - runs on startup
+    function initialize() {
+        console.log('Initializing SBA Loan Assistant...');
+        
+        // Load existing chat history or create a new chat
+        loadChatHistory();
+        if (chatHistory.length > 0) {
+            loadChat(chatHistory[0].id);
+        } else {
+            initNewChat();
+            // Welcome message is now added directly at the top level, so don't add it again here
+            // addWelcomeMessage(); - REMOVED to prevent double welcome message
+        }
+        
+        // Focus the input on page load
+        messageInput.focus();
     }
-    
-    // Set up the chat history button event
-    if (chatHistoryButton) {
-        chatHistoryButton.addEventListener('click', () => {
-            toggleChatHistoryPanel();
-        });
-    }
-    
-    // Initialize by resizing the input
-    resizeTextarea();
 
     // Add the welcome message
     function addWelcomeMessage() {
@@ -268,10 +317,10 @@ document.addEventListener('DOMContentLoaded', function() {
         welcomeElement.className = 'message assistant';
         welcomeElement.innerHTML = `
             <div class="avatar">
-                <img src="logo.png" alt="Assistant">
+                <img src="favicon.png" alt="Assistant">
             </div>
             <div class="content">
-                <p>Hello! I'm your SBA loan assistant. I can help answer questions about SBA Standard Operating Procedures, guidelines, and requirements.</p>
+                <p>Hello! I'm your SBA loan assistant. I can help answer questions about SBA loan eligibility, guidelines, and requirements.</p>
                 <p>What would you like to know about SBA loans?</p>
             </div>
         `;
@@ -336,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         messageElement.innerHTML = `
             <div class="avatar">
-                <img src="logo.png" alt="Assistant">
+                <img src="favicon.png" alt="Assistant">
             </div>
             <div class="content">
                 ${formattedText}
@@ -371,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
         typingElement.className = 'message assistant';
         typingElement.innerHTML = `
             <div class="avatar">
-                <img src="logo.png" alt="Assistant">
+                <img src="favicon.png" alt="Assistant">
             </div>
             <div class="content">
                 <p>
@@ -661,6 +710,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Focus the input on page load
     messageInput.focus();
+    
+    // Initialize the chat interface
+    initialize();
+    
+    // LAST RESORT FIX - ADD A BIG BUTTON AT THE BOTTOM OF THE PANEL
+    if (chatHistoryPanel) {
+        console.log('Creating big close button at bottom of panel');
+        
+        // Create a container for the button
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            background-color: white;
+            position: sticky;
+            bottom: 0;
+        `;
+        
+        // Create a big, unmissable close button
+        const bigCloseButton = document.createElement('button');
+        bigCloseButton.textContent = 'Close Chat History';
+        bigCloseButton.style.cssText = `
+            background-color: #003a8c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        `;
+        
+        // Add click event
+        bigCloseButton.onclick = function() {
+            console.log('Big close button clicked');
+            chatHistoryPanel.classList.remove('open');
+        };
+        
+        // Add button to container and container to panel
+        buttonContainer.appendChild(bigCloseButton);
+        chatHistoryPanel.appendChild(buttonContainer);
+    }
 });
 
 // Webflow embed code initialization
