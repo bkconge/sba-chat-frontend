@@ -38,33 +38,84 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleChatHistoryPanel();
     });
     
-    // CRITICAL FIX: Add a direct event listener for the history close button
-    const historyCloseBtn = document.getElementById('history-close-button');
-    if (historyCloseBtn) {
-        console.log('Setting up close button handler');
-        historyCloseBtn.addEventListener('click', function(e) {
-            console.log('History close button clicked');
-            e.preventDefault(); // Prevent any default action
-            e.stopPropagation(); // Stop event bubbling
-            toggleChatHistoryPanel(false);
-        });
-    } else {
-        console.error('History close button not found in DOM');
+    // --- Sidebar Close Button Handler Setup ---
+    function setupSidebarCloseButton() {
+        const closeBtn = document.getElementById('history-close-button');
+        if (closeBtn) {
+            // Remove any existing event listeners by replacing the element
+            const newBtn = closeBtn.cloneNode(true);
+            closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                chatHistoryPanel.classList.remove('open');
+            });
+        } else {
+            console.error('Sidebar close button not found!');
+        }
     }
+
+    // Call setup on load and after updating the chat history panel
+    setupSidebarCloseButton();
     
-    // EMERGENCY FIX FOR CLOSE BUTTON
-    document.getElementById('history-close-button').onclick = function() {
-        console.log('Close button clicked - DIRECT HANDLER');
-        document.getElementById('chat-history-panel').classList.remove('open');
-        return false; // Prevent default action
+    // Patch updateChatHistoryPanel to always re-setup the close button
+    const origUpdateChatHistoryPanel = window.updateChatHistoryPanel;
+    window.updateChatHistoryPanel = function(...args) {
+        if (typeof origUpdateChatHistoryPanel === 'function') {
+            origUpdateChatHistoryPanel.apply(this, args);
+        }
+        setupSidebarCloseButton();
     };
-    
-    // CRITICAL FIX: Explicitly add the welcome message immediately
-    // Clear any existing messages first
-    messagesContainer.innerHTML = '';
-    // Add the welcome message
-    addWelcomeMessage();
-    
+
+    // Remove duplicate/legacy handlers for the close button
+    // (No need for multiple .onclick assignments or direct listeners)
+
+    // --- Big Close Button at Bottom (ensure only one exists) ---
+    function ensureBigCloseButton() {
+        if (!chatHistoryPanel.querySelector('.big-close-btn-container')) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'big-close-btn-container';
+            buttonContainer.style.cssText = `
+                padding: 15px;
+                text-align: center;
+                border-top: 1px solid #eee;
+                background-color: white;
+                position: sticky;
+                bottom: 0;
+            `;
+            const bigCloseButton = document.createElement('button');
+            bigCloseButton.textContent = 'Close Chat History';
+            bigCloseButton.style.cssText = `
+                background-color: #003a8c;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+                width: 100%;
+            `;
+            bigCloseButton.onclick = function() {
+                chatHistoryPanel.classList.remove('open');
+            };
+            buttonContainer.appendChild(bigCloseButton);
+            chatHistoryPanel.appendChild(buttonContainer);
+        }
+    }
+    ensureBigCloseButton();
+
+    // If chat history panel is ever re-rendered, re-ensure the button
+    window.ensureBigCloseButton = ensureBigCloseButton;
+    const origUpdateChatHistoryPanel2 = window.updateChatHistoryPanel;
+    window.updateChatHistoryPanel = function(...args) {
+        if (typeof origUpdateChatHistoryPanel2 === 'function') {
+            origUpdateChatHistoryPanel2.apply(this, args);
+        }
+        setupSidebarCloseButton();
+        ensureBigCloseButton();
+    };
+
     // Load chat history from localStorage
     function loadChatHistory() {
         const savedHistory = localStorage.getItem('sbaChatHistory');
@@ -713,47 +764,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize the chat interface
     initialize();
-    
-    // LAST RESORT FIX - ADD A BIG BUTTON AT THE BOTTOM OF THE PANEL
-    if (chatHistoryPanel) {
-        console.log('Creating big close button at bottom of panel');
-        
-        // Create a container for the button
-        const buttonContainer = document.createElement('div');
-        buttonContainer.style.cssText = `
-            padding: 15px;
-            text-align: center;
-            border-top: 1px solid #eee;
-            background-color: white;
-            position: sticky;
-            bottom: 0;
-        `;
-        
-        // Create a big, unmissable close button
-        const bigCloseButton = document.createElement('button');
-        bigCloseButton.textContent = 'Close Chat History';
-        bigCloseButton.style.cssText = `
-            background-color: #003a8c;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-        `;
-        
-        // Add click event
-        bigCloseButton.onclick = function() {
-            console.log('Big close button clicked');
-            chatHistoryPanel.classList.remove('open');
-        };
-        
-        // Add button to container and container to panel
-        buttonContainer.appendChild(bigCloseButton);
-        chatHistoryPanel.appendChild(buttonContainer);
-    }
 });
 
 // Webflow embed code initialization
