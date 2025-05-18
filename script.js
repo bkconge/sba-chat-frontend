@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // API configuration
-    const API_URL = 'https://xrn8eyh485.execute-api.us-east-1.amazonaws.com/prod/api/chat';  // Replace this with the API Gateway URL you received
+    const API_URL = 'https://rztdhnend7.execute-api.us-east-1.amazonaws.com/default/sba-sop-agent';  // Lambda API Gateway URL
     const API_KEY = '';  // Add your API key if needed
 
     // Initialize function - runs on startup
