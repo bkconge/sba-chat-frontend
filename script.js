@@ -159,6 +159,93 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add the welcome message
     addWelcomeMessage();
     
+    // --- Sidebar Close Button Handler Setup ---
+    function ensureSidebarCloseButton() {
+        // Always ensure the close button exists in the header
+        const historyHeader = document.querySelector('.history-header');
+        if (historyHeader && !document.getElementById('history-close-button')) {
+            const closeBtn = document.createElement('button');
+            closeBtn.id = 'history-close-button';
+            closeBtn.title = 'Close history panel';
+            closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>`;
+            closeBtn.className = '';
+            // Insert at the end of the header
+            historyHeader.appendChild(closeBtn);
+        }
+        // Always attach the event listener
+        const btn = document.getElementById('history-close-button');
+        if (btn) {
+            btn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                chatHistoryPanel.classList.remove('open');
+            };
+        }
+    }
+
+    // Patch updateChatHistoryPanel to always re-ensure the close button
+    if (typeof window.updateChatHistoryPanel === 'function') {
+        const origUpdateChatHistoryPanel = window.updateChatHistoryPanel;
+        window.updateChatHistoryPanel = function(...args) {
+            origUpdateChatHistoryPanel.apply(this, args);
+            ensureSidebarCloseButton();
+        };
+    } else {
+        // If updateChatHistoryPanel is not defined yet, set up a MutationObserver fallback
+        const observer = new MutationObserver(() => ensureSidebarCloseButton());
+        observer.observe(document.getElementById('chat-history-panel'), { childList: true, subtree: true });
+    }
+    // Run once on load
+    ensureSidebarCloseButton();
+
+    // --- Big Close Button at Bottom (ensure only one exists) ---
+    function ensureBigCloseButton() {
+        if (!chatHistoryPanel.querySelector('.big-close-btn-container')) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'big-close-btn-container';
+            buttonContainer.style.cssText = `
+                padding: 15px;
+                text-align: center;
+                border-top: 1px solid #eee;
+                background-color: white;
+                position: sticky;
+                bottom: 0;
+            `;
+            const bigCloseButton = document.createElement('button');
+            bigCloseButton.textContent = 'Close Chat History';
+            bigCloseButton.style.cssText = `
+                background-color: #003a8c;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+                width: 100%;
+            `;
+            bigCloseButton.onclick = function() {
+                chatHistoryPanel.classList.remove('open');
+            };
+            buttonContainer.appendChild(bigCloseButton);
+            chatHistoryPanel.appendChild(buttonContainer);
+        }
+    }
+    ensureBigCloseButton();
+
+    // If chat history panel is ever re-rendered, re-ensure the button
+    window.ensureBigCloseButton = ensureBigCloseButton;
+    if (typeof window.updateChatHistoryPanel === 'function') {
+        const origUpdateChatHistoryPanel2 = window.updateChatHistoryPanel;
+        window.updateChatHistoryPanel = function(...args) {
+            origUpdateChatHistoryPanel2.apply(this, args);
+            ensureSidebarCloseButton();
+            ensureBigCloseButton();
+        };
+    }
+    // Run once on load
+    ensureBigCloseButton();
+
     // Load chat history from localStorage
     function loadChatHistory() {
         const savedHistory = localStorage.getItem('sbaChatHistory');
@@ -655,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Create the request body
             const requestBody = {
-                question: message,
+                query: message,       // <<< Changed key from 'question' to 'query'
                 top_k: 5
             };
             
