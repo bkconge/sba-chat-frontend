@@ -38,26 +38,120 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleChatHistoryPanel();
     });
     
-    // CRITICAL FIX: Add a direct event listener for the history close button
+    // Enhanced sidebar close button handler - ensures it stays visible and functional after queries
     const historyCloseBtn = document.getElementById('history-close-button');
     if (historyCloseBtn) {
-        console.log('Setting up close button handler');
         historyCloseBtn.addEventListener('click', function(e) {
             console.log('History close button clicked');
-            e.preventDefault(); // Prevent any default action
-            e.stopPropagation(); // Stop event bubbling
-            toggleChatHistoryPanel(false);
+            e.preventDefault();
+            e.stopPropagation();
+            // Directly manipulate the class rather than using toggleChatHistoryPanel
+            document.getElementById('chat-history-panel').classList.remove('open');
+        });
+        
+        // Make sure the button is always visible and has the correct styling
+        function applyCorrectButtonStyling() {
+            historyCloseBtn.style.display = 'flex';
+            historyCloseBtn.style.zIndex = '9999';
+            historyCloseBtn.style.opacity = '1';
+            historyCloseBtn.style.visibility = 'visible';
+            
+            // Force the Lords of Lending styling
+            historyCloseBtn.style.backgroundColor = '#2c2c2c';
+            historyCloseBtn.style.border = '1px solid #d4af37';
+            historyCloseBtn.style.color = '#d4af37';
+            
+            // Make sure the SVG element has the right color too
+            const svg = historyCloseBtn.querySelector('svg');
+            if (svg) {
+                svg.style.fill = '#d4af37';
+            }
+        }
+        
+        // Apply styling immediately
+        applyCorrectButtonStyling();
+        
+        // Also add hover effects
+        historyCloseBtn.addEventListener('mouseover', function() {
+            this.style.backgroundColor = '#d4af37';
+            this.style.color = 'black';
+            const svg = this.querySelector('svg');
+            if (svg) {
+                svg.style.fill = 'black';
+            }
+        });
+        
+        historyCloseBtn.addEventListener('mouseout', function() {
+            this.style.backgroundColor = '#2c2c2c';
+            this.style.color = '#d4af37';
+            const svg = this.querySelector('svg');
+            if (svg) {
+                svg.style.fill = '#d4af37';
+            }
+        });
+        
+        // Ensure button styling stays correct when DOM changes
+        const observer = new MutationObserver(function(mutations) {
+            applyCorrectButtonStyling();
+        });
+        
+        // Start observing the DOM for changes
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
         });
     } else {
         console.error('History close button not found in DOM');
+        // Create one if it doesn't exist
+        const newCloseBtn = document.createElement('button');
+        newCloseBtn.id = 'history-close-button';
+        newCloseBtn.title = 'Close history panel';
+        newCloseBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#d4af37" viewBox="0 0 16 16" style="font-weight: bold;"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
+        document.body.appendChild(newCloseBtn);
+        
+        // Apply Lords of Lending styling to the new button
+        newCloseBtn.style.backgroundColor = '#2c2c2c';
+        newCloseBtn.style.border = '1px solid #d4af37';
+        newCloseBtn.style.color = '#d4af37';
+        newCloseBtn.style.display = 'flex';
+        newCloseBtn.style.alignItems = 'center';
+        newCloseBtn.style.justifyContent = 'center';
+        newCloseBtn.style.position = 'fixed';
+        newCloseBtn.style.right = '10px';
+        newCloseBtn.style.top = '15px';
+        newCloseBtn.style.zIndex = '9999';
+        newCloseBtn.style.width = '30px';
+        newCloseBtn.style.height = '30px';
+        newCloseBtn.style.borderRadius = '4px';
+        newCloseBtn.style.cursor = 'pointer';
+        
+        // Add hover effects to new button
+        newCloseBtn.addEventListener('mouseover', function() {
+            this.style.backgroundColor = '#d4af37';
+            this.style.color = 'black';
+            const svg = this.querySelector('svg');
+            if (svg) {
+                svg.style.fill = 'black';
+            }
+        });
+        
+        newCloseBtn.addEventListener('mouseout', function() {
+            this.style.backgroundColor = '#2c2c2c';
+            this.style.color = '#d4af37';
+            const svg = this.querySelector('svg');
+            if (svg) {
+                svg.style.fill = '#d4af37';
+            }
+        });
+        newCloseBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const panel = document.getElementById('chat-history-panel');
+            if (panel) {
+                panel.classList.remove('open');
+            }
+        });
     }
-    
-    // EMERGENCY FIX FOR CLOSE BUTTON
-    document.getElementById('history-close-button').onclick = function() {
-        console.log('Close button clicked - DIRECT HANDLER');
-        document.getElementById('chat-history-panel').classList.remove('open');
-        return false; // Prevent default action
-    };
     
     // CRITICAL FIX: Explicitly add the welcome message immediately
     // Clear any existing messages first
@@ -169,10 +263,89 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateChatHistoryPanel() {
         if (!chatHistoryPanel) return;
         
+        // Get or create the header with close button
+        let historyHeader = document.querySelector('.history-header');
+        if (!historyHeader) {
+            historyHeader = document.createElement('div');
+            historyHeader.className = 'history-header';
+            historyHeader.innerHTML = `
+                <h2>Chat History</h2>
+                <button id="history-close-button" title="Close history panel" style="background-color: #2c2c2c !important; border: 1px solid #d4af37 !important; color: #d4af37 !important; padding: 5px; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#d4af37" viewBox="0 0 16 16" style="font-weight: bold;">
+                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                    </svg>
+                </button>
+            `;
+            
+            // Add event listener to the close button
+            const closeButton = historyHeader.querySelector('#history-close-button');
+            if (closeButton) {
+                closeButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    chatHistoryPanel.classList.remove('open');
+                });
+            }
+        }
+        
+        // Create a container for chat history items
+        const historyListContainer = document.createElement('div');
+        historyListContainer.className = 'history-list-container';
+        
+        // Create the bottom close button container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #2a2a2a;
+            background-color: #1a1a1a;
+            position: sticky;
+            bottom: 0;
+        `;
+        
+        // Create the bottom close button
+        const bigCloseButton = document.createElement('button');
+        bigCloseButton.textContent = 'Close Chat History';
+        bigCloseButton.style.cssText = `
+            background-color: #2c2c2c;
+            color: #d4af37;
+            border: 1px solid #d4af37;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+        `;
+        
+        // Add hover effects for the big close button
+        bigCloseButton.addEventListener('mouseover', function() {
+            this.style.backgroundColor = '#d4af37';
+            this.style.color = 'black';
+        });
+        
+        bigCloseButton.addEventListener('mouseout', function() {
+            this.style.backgroundColor = '#2c2c2c';
+            this.style.color = '#d4af37';
+        });
+        
+        // Add click event to close the panel
+        bigCloseButton.addEventListener('click', function() {
+            chatHistoryPanel.classList.remove('open');
+        });
+        
+        // Add button to container
+        buttonContainer.appendChild(bigCloseButton);
+        
+        // Clear the content but preserve the structure
         chatHistoryPanel.innerHTML = '';
+        chatHistoryPanel.appendChild(historyHeader);
+        chatHistoryPanel.appendChild(historyListContainer);
+        chatHistoryPanel.appendChild(buttonContainer);
         
         if (chatHistory.length === 0) {
-            chatHistoryPanel.innerHTML = '<div class="history-empty">No previous conversations</div>';
+            historyListContainer.innerHTML = '<div class="history-empty">No previous conversations</div>';
             return;
         }
         
@@ -200,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            chatHistoryPanel.appendChild(chatElement);
+            historyListContainer.appendChild(chatElement);
         });
         
         // Add event listeners to delete buttons
@@ -317,11 +490,12 @@ document.addEventListener('DOMContentLoaded', function() {
         welcomeElement.className = 'message assistant';
         welcomeElement.innerHTML = `
             <div class="avatar">
-                <img src="favicon.png" alt="Assistant">
+                <img src="lords-favicon.png" alt="Assistant">
             </div>
             <div class="content">
-                <p>Hello! I'm your SBA loan assistant. I can help answer questions about SBA loan eligibility, guidelines, and requirements.</p>
-                <p>What would you like to know about SBA loans?</p>
+                <p>Welcome to the Lords of Lending SBA Loan Assistant!</p>
+                <p>I'm here to provide accurate information from the SBA rules and requirements. Ask me anything about SBA loan eligibility, requirements, guidelines, or specific sections of the SBA Standard Operating Procedures 50 10 8.</p>
+                <p>How can I assist you with your SBA lending questions today?</p>
             </div>
         `;
         messagesContainer.appendChild(welcomeElement);
@@ -385,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         messageElement.innerHTML = `
             <div class="avatar">
-                <img src="favicon.png" alt="Assistant">
+                <img src="lords-favicon.png" alt="Assistant">
             </div>
             <div class="content">
                 ${formattedText}
@@ -420,7 +594,7 @@ document.addEventListener('DOMContentLoaded', function() {
         typingElement.className = 'message assistant';
         typingElement.innerHTML = `
             <div class="avatar">
-                <img src="favicon.png" alt="Assistant">
+                <img src="lords-favicon.png" alt="Assistant">
             </div>
             <div class="content">
                 <p>
@@ -713,6 +887,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize the chat interface
     initialize();
+    
+    // Bottom close button has been removed
 });
 
 // Webflow embed code initialization

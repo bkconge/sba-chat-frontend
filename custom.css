@@ -1,0 +1,35 @@
+/* Styling fixes for Lords of Lending dark theme */
+
+/* X button in sidebar */
+#history-close-button {
+    background-color: #2c2c2c !important;
+    border: 1px solid #d4af37 !important;
+    color: #d4af37 !important;
+}
+
+#history-close-button svg {
+    fill: #d4af37 !important;
+}
+
+#history-close-button:hover {
+    background-color: #d4af37 !important;
+    color: black !important;
+}
+
+#history-close-button:hover svg {
+    fill: black !important;
+}
+
+/* Hide all bottom close buttons */
+.history-list-container + div button,
+.bottom-close-button,
+.bottom-close-btn,
+.big-close-button,
+.bigCloseButton {
+    display: none !important;
+}
+
+/* Hide container for the close button */
+.history-list-container + div {
+    display: none !important;
+}
