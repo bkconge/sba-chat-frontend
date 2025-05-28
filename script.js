@@ -550,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // API configuration
-    const API_URL = 'https://rztdhnend7.execute-api.us-east-1.amazonaws.com/default/sba-sop-agent';  // Lambda API Gateway URL
+    const API_URL = 'https://nadm4dyid7.execute-api.us-east-1.amazonaws.com/sba-sop-agent';  // Corrected HTTP API URL
     const API_KEY = '';  // Add your API key if needed
 
     // Initialize function - runs on startup
